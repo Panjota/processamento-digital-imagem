@@ -5,6 +5,8 @@
 #include <fstream>
 #include <random>
 #include <string>
+#include <cstdio>
+#include <cstdlib>
 
 // Variáveis globais
 int numTriangles = 1000;
@@ -18,7 +20,7 @@ auto startTime = std::chrono::high_resolution_clock::now();
 float fps = 0.0f;
 
 // IDs das texturas
-GLuint textureIDs[3];
+GLuint textureID; // Apenas uma textura (UEA)
 
 // Estrutura para armazenar dados de cada triângulo
 struct Triangle {
@@ -26,7 +28,9 @@ struct Triangle {
     float r, g, b;
     float rotX, rotY, rotZ;
     float scale;
-    int textureIndex; // Qual textura usar (0, 1 ou 2)
+    float texRotation; // A.2 - Rotação da textura
+    float texScaleU, texScaleV; // A.2 - Escala da textura
+    float texOffsetU, texOffsetV; // A.2 - Offset da textura
 };
 
 std::vector<Triangle> triangles;
@@ -46,66 +50,53 @@ void printGPUInfo() {
     std::cout << "================================\n" << std::endl;
 }
 
-// Função para criar texturas procedurais
+GLuint LoadTexture(const char* filename, int width, int height) {
+    GLuint texture;
+    unsigned char* data;
+    FILE* file;
+    
+    // D.1 - Carregar a imagem
+    file = fopen(filename, "rb");
+    if (file == NULL) {
+        std::cout << "Erro: Não foi possível carregar a imagem " << filename << std::endl;
+        return 0;
+    }
+    
+    data = (unsigned char*)malloc(width * height * 3);
+    fread(data, width * height * 3, 1, file);
+    fclose(file);
+    
+    // D.2 - Criar uma textura em OpenGL
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    
+    // D.3 - Definir parâmetros da textura
+    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+    
+    free(data);
+    
+    std::cout << "Textura carregada com sucesso: " << filename << std::endl;
+    return texture;
+}
+
+// Função para criar texturas
 void createTextures() {
-    glGenTextures(3, textureIDs);
+    // Carrega apenas a textura da UEA
+    textureID = LoadTexture("uea.raw", 256, 256);
     
-    // Textura 1: Xadrez vermelho/branco
-    glBindTexture(GL_TEXTURE_2D, textureIDs[0]);
-    const int size1 = 64;
-    unsigned char texture1[size1][size1][3];
-    for (int i = 0; i < size1; i++) {
-        for (int j = 0; j < size1; j++) {
-            if ((i/8 + j/8) % 2 == 0) {
-                texture1[i][j][0] = 255; // Vermelho
-                texture1[i][j][1] = 0;
-                texture1[i][j][2] = 0;
-            } else {
-                texture1[i][j][0] = 255; // Branco
-                texture1[i][j][1] = 255;
-                texture1[i][j][2] = 255;
-            }
-        }
+    if (textureID == 0) {
+        std::cout << "ERRO: Não foi possível carregar uea!" << std::endl;
+        std::cout << "Certifique-se de que o arquivo existe no diretório e é um arquivo RAW RGB." << std::endl;
+        exit(1);
     }
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, size1, size1, 0, GL_RGB, GL_UNSIGNED_BYTE, texture1);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     
-    // Textura 2: Gradiente azul
-    glBindTexture(GL_TEXTURE_2D, textureIDs[1]);
-    const int size2 = 64;
-    unsigned char texture2[size2][size2][3];
-    for (int i = 0; i < size2; i++) {
-        for (int j = 0; j < size2; j++) {
-            texture2[i][j][0] = 0;
-            texture2[i][j][1] = static_cast<unsigned char>(i * 255 / size2); // Verde gradiente
-            texture2[i][j][2] = static_cast<unsigned char>(j * 255 / size2); // Azul gradiente
-        }
-    }
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, size2, size2, 0, GL_RGB, GL_UNSIGNED_BYTE, texture2);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    
-    // Textura 3: Padrão circular
-    glBindTexture(GL_TEXTURE_2D, textureIDs[2]);
-    const int size3 = 64;
-    unsigned char texture3[size3][size3][3];
-    for (int i = 0; i < size3; i++) {
-        for (int j = 0; j < size3; j++) {
-            float dx = (i - size3/2) / (float)(size3/2);
-            float dy = (j - size3/2) / (float)(size3/2);
-            float dist = sqrt(dx*dx + dy*dy);
-            int intensity = (int)(255 * (0.5 + 0.5 * sin(dist * 10)));
-            texture3[i][j][0] = intensity; // Vermelho
-            texture3[i][j][1] = intensity / 2; // Verde
-            texture3[i][j][2] = 255 - intensity; // Azul invertido
-        }
-    }
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, size3, size3, 0, GL_RGB, GL_UNSIGNED_BYTE, texture3);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    
-    std::cout << "Texturas procedurais criadas com sucesso!" << std::endl;
+    std::cout << "Textura UEA carregada com sucesso!" << std::endl;
 }
 
 // Função para configurar iluminação
@@ -169,7 +160,11 @@ void generateTriangles(int count) {
     std::uniform_real_distribution<float> colorDist(0.5f, 1.0f); // Cores mais claras
     std::uniform_real_distribution<float> rotDist(0.0f, 360.0f);
     std::uniform_real_distribution<float> scaleDist(0.5f, 1.5f);
-    std::uniform_int_distribution<int> texDist(0, 2); // 3 texturas
+    
+    // A.2 - Parâmetros para transformações das texturas
+    std::uniform_real_distribution<float> texRotDist(0.0f, 360.0f);
+    std::uniform_real_distribution<float> texScaleDist(0.5f, 2.0f);
+    std::uniform_real_distribution<float> texOffsetDist(0.0f, 1.0f);
     
     for (int i = 0; i < count; ++i) {
         Triangle t;
@@ -186,7 +181,13 @@ void generateTriangles(int count) {
         t.rotZ = rotDist(rng);
         
         t.scale = scaleDist(rng);
-        t.textureIndex = texDist(rng);
+        
+        // A.2 - Transformações geométricas das texturas
+        t.texRotation = texRotDist(rng);
+        t.texScaleU = texScaleDist(rng);
+        t.texScaleV = texScaleDist(rng);
+        t.texOffsetU = texOffsetDist(rng);
+        t.texOffsetV = texOffsetDist(rng);
         
         triangles.push_back(t);
     }
@@ -235,19 +236,27 @@ void display() {
     for (const auto& t : triangles) {
         glPushMatrix();
         
-        // Aplica transformações
+        // Aplica transformações geométricas
         glTranslatef(t.x, t.y, t.z);
         glRotatef(rotationAngle + t.rotX, 1.0f, 0.0f, 0.0f);
         glRotatef(rotationAngle + t.rotY, 0.0f, 1.0f, 0.0f);
         glRotatef(rotationAngle + t.rotZ, 0.0f, 0.0f, 1.0f);
         glScalef(t.scale, t.scale, t.scale);
 
-        // Bind da textura específica
+        // A.1 - Bind da textura UEA
         if (texturesEnabled) {
-            glBindTexture(GL_TEXTURE_2D, textureIDs[t.textureIndex]);
+            glBindTexture(GL_TEXTURE_2D, textureID);
         }
 
-        // Desenha triângulo com coordenadas de textura
+        // A.2 - Transformações geométricas das texturas
+        glMatrixMode(GL_TEXTURE);
+        glLoadIdentity();
+        glTranslatef(t.texOffsetU, t.texOffsetV, 0);
+        glRotatef(t.texRotation, 0, 0, 1);
+        glScalef(t.texScaleU, t.texScaleV, 1);
+        glMatrixMode(GL_MODELVIEW);
+
+        // A.1 - Definir mapeamento das coordenadas das texturas nas coordenadas das primitivas
         glBegin(GL_TRIANGLES);
             glNormal3f(0.0f, 0.0f, 1.0f);
             
@@ -263,6 +272,11 @@ void display() {
             glTexCoord2f(1.0f, 0.0f); // Direita embaixo
             glVertex3f(1.0f, -0.5f, 0.0f);
         glEnd();
+
+        // Restaura matriz de textura
+        glMatrixMode(GL_TEXTURE);
+        glLoadIdentity();
+        glMatrixMode(GL_MODELVIEW);
 
         glPopMatrix();
     }
@@ -343,6 +357,7 @@ int main(int argc, char** argv) {
     glutCreateWindow("OpenGL Performance Test - TEXTURED");
 
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_TEXTURE_2D); // Habilita texturas por padrão
     glClearColor(0.1f, 0.1f, 0.2f, 1.0f);
     
     printGPUInfo();
@@ -358,7 +373,7 @@ int main(int argc, char** argv) {
     std::cout << "=== CONTROLES TEXTURED ===" << std::endl;
     std::cout << "SETAS CIMA/BAIXO: +/- 1000 triangulos" << std::endl;
     std::cout << "T: ligar/desligar texturas" << std::endl;
-    std::cout << "L: ligar/desligar iluminação" << std::endl;
+    std::cout << "L: ligar/desligar iluminacao" << std::endl;
     std::cout << "ESC: sair" << std::endl;
     std::cout << "Dados salvos em 'data/fps_textured.csv'" << std::endl;
 
