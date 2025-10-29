@@ -1,0 +1,20 @@
+RELATÓRIO DE ANÁLISE DE PERFORMANCE GRÁFICA
+==================================================
+
+PERFORMANCE BÁSICA:
+- Registros: 143
+- FPS médio: 50.74
+- FPS min/max: 19.7748/60.9682
+
+PERFORMANCE COM ILUMINAÇÃO:
+- Registros: 124
+- FPS médio: 49.04
+
+PERFORMANCE COM TEXTURAS:
+- Registros: 101
+- FPS médio: 42.57
+
+COMPARAÇÕES:
+- Básico: 50.74 FPS
+- Iluminação: 49.04 FPS (-3.4%)
+- Texturas: 42.57 FPS (-16.1%)
