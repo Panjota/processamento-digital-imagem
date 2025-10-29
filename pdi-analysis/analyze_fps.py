@@ -2,7 +2,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import os
-from pathlib import Path
 
 class FPSAnalyzer:
     def __init__(self):
@@ -12,9 +11,9 @@ class FPSAnalyzer:
         
     def load_data(self):
         files = {
-            'basic': 'fps_basic.csv',
-            'lighting': 'fps_lighting.csv',
-            'textured': 'fps_textured.csv'
+            'basic': 'data/fps_basic.csv',
+            'lighting': 'data/fps_lighting.csv',
+            'textured': 'data/fps_textured.csv'
         }
         
         for name, filename in files.items():
@@ -154,11 +153,18 @@ class FPSAnalyzer:
             axes[3].legend(loc='upper right')
         
         plt.tight_layout()
-        plt.savefig('fps_analysis.png', dpi=300, bbox_inches='tight')
+        
+        # Criar diretório results se não existir
+        os.makedirs('results', exist_ok=True)
+        
+        plt.savefig('results/fps_analysis.png', dpi=300, bbox_inches='tight')
         plt.show()
     
     def generate_report(self):
-        with open('performance_report.txt', 'w', encoding='utf-8') as f:
+        # Criar diretório results se não existir
+        os.makedirs('results', exist_ok=True)
+        
+        with open('results/performance_report.txt', 'w', encoding='utf-8') as f:
             f.write("RELATÓRIO DE ANÁLISE DE PERFORMANCE GRÁFICA\n")
             f.write("=" * 50 + "\n\n")
             

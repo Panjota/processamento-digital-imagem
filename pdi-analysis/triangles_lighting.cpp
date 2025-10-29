@@ -96,7 +96,10 @@ void setupLighting() {
 
 // Função para salvar dados no arquivo CSV
 void saveToCSV(int triangles, float fpsValue) {
-    std::ofstream file("fps_lighting.csv", std::ios::app);
+    // Criar diretório data se não existir (Windows)
+    system("if not exist data mkdir data");
+    
+    std::ofstream file("data/fps_lighting.csv", std::ios::app);
     if (file.is_open()) {
         // Verifica se o arquivo está vazio para adicionar cabeçalho
         file.seekp(0, std::ios::end);
@@ -298,7 +301,7 @@ int main(int argc, char** argv) {
     std::cout << "O: ligar/desligar luz omnidirecional" << std::endl;
     std::cout << "S: ligar/desligar spot light" << std::endl;
     std::cout << "ESC: sair" << std::endl;
-    std::cout << "Dados salvos em 'fps_lighting.csv'" << std::endl;
+    std::cout << "Dados salvos em 'data/fps_lighting.csv'" << std::endl;
 
     glutMainLoop();
     return 0;
